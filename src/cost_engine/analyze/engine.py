@@ -7,14 +7,43 @@ from datetime import UTC, date, datetime
 import polars as pl
 
 from .. import schema as S
-from ..models import Finding, Report
+from ..models import Finding, Report, Severity
 from .aggregate import build_breakdowns, total_cost
 from .rules import ALL_RULES, Rule
+
+# Share-of-spend severity floors. Rules triage on absolute dollars (tuned for
+# mid-size bills), which under-ranks a small account where $40/mo can be 10% of
+# the bill. Findings worth this share of total spend get at least the floor
+# severity, gated on decent confidence so the low-confidence rules' deliberate
+# severity caps aren't overridden.
+_SHARE_FLOORS = ((0.10, Severity.HIGH), (0.05, Severity.MEDIUM))
+_ESCALATION_MIN_CONFIDENCE = 0.6
+_SEVERITY_RANK = {
+    Severity.INFO: 0,
+    Severity.LOW: 1,
+    Severity.MEDIUM: 2,
+    Severity.HIGH: 3,
+}
 
 
 def _billing_period(df: pl.DataFrame) -> date:
     vals = df[S.BILL_PERIOD].drop_nulls().unique().to_list()
     return vals[0] if vals else date.today()
+
+
+def _calibrate_severity(findings: list[Finding], total: float) -> None:
+    """Raise severity for findings that are large relative to the whole bill."""
+    if total <= 0:
+        return
+    for f in findings:
+        if f.estimated_monthly_savings <= 0 or f.confidence < _ESCALATION_MIN_CONFIDENCE:
+            continue
+        share = f.estimated_monthly_savings / total
+        for threshold, floor in _SHARE_FLOORS:
+            if share >= threshold:
+                if _SEVERITY_RANK[floor] > _SEVERITY_RANK[f.severity]:
+                    f.severity = floor
+                break
 
 
 def _sort_findings(findings: list[Finding]) -> list[Finding]:
@@ -41,6 +70,7 @@ def analyze(df: pl.DataFrame, rules: list[Rule] | None = None) -> Report:
     findings = _sort_findings(findings)
 
     total = total_cost(df)
+    _calibrate_severity(findings, total)
     savings = round(sum(f.estimated_monthly_savings for f in findings), 2)
 
     return Report(

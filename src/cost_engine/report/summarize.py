@@ -87,6 +87,34 @@ def _llm_summary(report: Report) -> str | None:
         return None
 
 
+def _next_step(paying: list) -> str:
+    """Closing advice derived from the findings that actually fired.
+
+    Quick wins (high-confidence waste/rightsizing) get named when present; the
+    commitment caveat only appears when a commitment finding exists. Never
+    references a rule that didn't fire.
+    """
+    from ..models import Category
+
+    quick = [f for f in paying if f.confidence >= 0.9]
+    has_commitment = any(f.category is Category.COMMITMENT for f in paying)
+
+    sentences = []
+    if quick:
+        names = " and ".join(f.title for f in quick[:2])
+        sentences.append(f"Start with the highest-confidence wins: {names}.")
+    if has_commitment:
+        sentences.append(
+            "Validate the commitment-based savings against a steady usage "
+            "baseline before buying."
+        )
+    if not sentences:
+        sentences.append(
+            "Confirm each estimate against the affected resources before acting."
+        )
+    return " ".join(sentences)
+
+
 def _fallback_summary(report: Report) -> str:
     paying = [f for f in report.findings if f.estimated_monthly_savings > 0]
     if not paying:
@@ -109,7 +137,5 @@ def _fallback_summary(report: Report) -> str:
         f"${report.total_estimated_monthly_savings:,.0f}/month "
         f"({report.savings_pct_of_spend:.0%}, ${report.total_annual_savings:,.0f}/year) "
         f"looks recoverable across {n} {opportunities}. {lead}"
-        f"{top_clause}. Start with the highest-confidence, lowest-effort wins "
-        f"(gp2-to-gp3 and idle resources), and validate the commitment-based "
-        f"savings against a steady usage baseline before buying."
+        f"{top_clause}. {_next_step(paying)}"
     )

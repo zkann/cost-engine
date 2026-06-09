@@ -83,6 +83,109 @@ def test_all_null_dimension_breakdown_suppressed(synthetic_df) -> None:
     assert "service" in dims  # other dimensions still present
 
 
+def _make_report(findings) -> object:
+    from datetime import UTC, date, datetime
+
+    from cost_engine.models import Report
+
+    total_savings = sum(f.estimated_monthly_savings for f in findings)
+    return Report(
+        billing_period=date(2026, 5, 1),
+        generated_at=datetime.now(UTC),
+        total_cost=450.0,
+        total_estimated_monthly_savings=total_savings,
+        savings_pct_of_spend=min(total_savings / 450.0, 1.0),
+        findings=findings,
+    )
+
+
+def _finding(rule_id, title, category, savings, confidence):
+    from cost_engine.models import Finding, Severity
+
+    return Finding(
+        rule_id=rule_id,
+        title=title,
+        category=category,
+        severity=Severity.LOW,
+        monthly_cost=savings * 2,
+        estimated_monthly_savings=savings,
+        detail="x",
+        recommendation="y",
+        confidence=confidence,
+    )
+
+
+def test_fallback_advice_never_names_absent_rules() -> None:
+    from cost_engine.models import Category
+
+    # Commitment-only report: the old hardcoded closer named gp2-to-gp3 and
+    # idle resources even when those rules didn't fire.
+    report = _make_report(
+        [
+            _finding(
+                "rds-reserved-coverage",
+                "Cover steady on-demand RDS with Reserved Instances",
+                Category.COMMITMENT,
+                41.0,
+                0.65,
+            )
+        ]
+    )
+    summarize(report, use_llm=False)
+    s = report.executive_summary
+    assert "gp2" not in s and "idle" not in s.lower()
+    assert "commitment" in s.lower()  # the caveat that IS relevant
+
+
+def test_fallback_advice_names_quick_wins_when_present() -> None:
+    from cost_engine.models import Category
+
+    report = _make_report(
+        [
+            _finding(
+                "idle-elastic-ip",
+                "Release idle Elastic IP addresses",
+                Category.WASTE,
+                100.0,
+                0.97,
+            )
+        ]
+    )
+    summarize(report, use_llm=False)
+    assert "release idle elastic ip addresses" in report.executive_summary.lower()
+
+
+def test_severity_escalates_on_share_of_spend(synthetic_df) -> None:
+    import polars as pl
+
+    from cost_engine import schema as S
+    from cost_engine.models import Severity
+
+    # Shrink the synthetic bill so the RDS finding's savings clear 10% of total
+    # spend; the absolute-dollar triage would call it LOW, the share floor
+    # raises it.
+    small = synthetic_df.with_columns(
+        (pl.col(S.UNBLENDED_COST) / 100).alias(S.UNBLENDED_COST)
+    )
+    r = analyze(small)
+    rds = next(f for f in r.findings if f.rule_id == "rds-reserved-coverage")
+    assert rds.estimated_monthly_savings / r.total_cost < 0.05
+    sp = next(f for f in r.findings if f.rule_id == "savings-plan-coverage")
+    assert sp.estimated_monthly_savings / r.total_cost >= 0.05
+    assert sp.severity in (Severity.MEDIUM, Severity.HIGH)
+
+
+def test_low_confidence_not_escalated() -> None:
+    from cost_engine.analyze.engine import _calibrate_severity
+    from cost_engine.models import Category, Severity
+
+    # 20% of spend but only 0.5 confidence: a low-confidence rule's deliberate
+    # severity cap must survive share-of-spend escalation.
+    f = _finding("nat-and-data-transfer", "x", Category.DATA_TRANSFER, 90.0, 0.5)
+    _calibrate_severity([f], total=450.0)
+    assert f.severity is Severity.LOW
+
+
 def test_fallback_summary_singular_grammar() -> None:
     from datetime import UTC, date, datetime
 

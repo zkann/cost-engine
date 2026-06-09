@@ -30,6 +30,7 @@ def test_demo_rich_runs() -> None:
     result = runner.invoke(app, ["demo", "--no-llm"])
     assert result.exit_code == 0
     assert "Recoverable" in result.stdout
+    assert "Where the money goes" in result.stdout
 
 
 def test_demo_json_is_valid() -> None:

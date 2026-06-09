@@ -187,6 +187,26 @@ def _print_rich(report: Report) -> None:
             f"{f.confidence:.0%}",
         )
     console.print(table)
+
+    # Where the money goes: the by-service breakdown is the single most
+    # informative table for "why is my bill this size", so it belongs in the
+    # terminal view, compact (top 5 + the rest folded into "other").
+    service = next((b for b in report.breakdowns if b.dimension == "service"), None)
+    if service and service.slices:
+        spend = Table(title="Where the money goes", header_style="bold")
+        spend.add_column("Service")
+        spend.add_column("Cost/mo", justify="right")
+        spend.add_column("Share", justify="right")
+        shown = service.slices[:5]
+        rest = service.slices[5:]
+        for s in shown:
+            spend.add_row(s.key, f"${s.cost:,.0f}", f"{s.share:.0%}")
+        if rest:
+            other_cost = sum(s.cost for s in rest)
+            other_share = sum(s.share for s in rest)
+            spend.add_row("other", f"${other_cost:,.0f}", f"{other_share:.0%}")
+        console.print(spend)
+
     console.print(
         "[dim]Run with --format md or --format json for the full report.[/dim]"
     )
