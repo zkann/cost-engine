@@ -218,22 +218,42 @@ def report(
 def s3(
     bucket: str = typer.Option(..., "--bucket", "-b", help="S3 bucket holding the CUR."),
     prefix: str | None = typer.Option(
-        None, "--prefix", "-p", help="Prefix to search; the latest object is used."
+        None, "--prefix", "-p", help="Prefix to search (most recent complete month)."
     ),
     key: str | None = typer.Option(None, "--key", "-k", help="Exact object key."),
+    month: str | None = typer.Option(
+        None, "--month", help="Specific billing month YYYY-MM (default: last complete)."
+    ),
+    latest: bool = typer.Option(
+        False, "--latest", help="Use the newest object, i.e. the current partial month."
+    ),
     fmt: Format = typer.Option(Format.rich, "--format", "-f", help="Output format."),
     no_llm: bool = typer.Option(False, "--no-llm", help="Skip the LLM summary."),
     out: Path | None = typer.Option(None, "--out", "-o", help="Write to file."),
 ) -> None:
-    """Pull a CUR straight from S3 (full fidelity) and analyze it."""
+    """Pull a CUR straight from S3 (full fidelity) and analyze it.
+
+    Under a prefix, defaults to the most recent COMPLETE billing month (the
+    newest object is the current, partial month). Use --month YYYY-MM for a
+    specific month or --latest for the current partial one.
+    """
     if not key and not prefix:
         raise typer.BadParameter("provide --prefix or --key")
+    month_date = date.fromisoformat(f"{month}-01") if month else None
     df = _load_or_exit(
-        lambda: load_cur_from_s3(bucket, prefix=prefix, key=key), what="S3 read"
+        lambda: load_cur_from_s3(
+            bucket, prefix=prefix, key=key, month=month_date, latest=latest
+        ),
+        what="S3 read",
     )
     rep = summarize(analyze(df), use_llm=not no_llm)
-    target = key if key else f"{prefix} (latest)"
-    rep.source = f"s3://{bucket}/{target}"
+    if key:
+        window = key
+    elif latest:
+        window = f"{prefix} (latest, partial month)"
+    else:
+        window = f"{prefix} ({month or 'last complete month'})"
+    rep.source = f"s3://{bucket}/{window}"
     rep.account_note = _account_note_from_data(df)  # the CUR carries the account id
     if fmt is Format.rich and (gap := _data_gap_note(df)):
         console.print(f"[dim]{gap}[/dim]")

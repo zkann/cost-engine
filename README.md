@@ -87,8 +87,9 @@ With the AWS extra installed (`pip install 'cost-engine[aws]'`) and a read-only
 credential on the standard boto3 chain, the tool fetches the data for you.
 
 ```bash
-# Full fidelity: find the latest CUR object under an S3 prefix and analyze it.
-cost-engine s3 --bucket your-cur-bucket --prefix exports/cur/
+# Full fidelity: read the CUR under an S3 prefix and analyze it.
+cost-engine s3 --bucket your-cur-bucket --prefix cost_report
+cost-engine s3 --bucket your-cur-bucket --prefix cost_report --month 2026-04
 cost-engine s3 --bucket your-cur-bucket --key path/to/exact-file.parquet
 
 # Fast top-line: pull from the Cost Explorer API (no CUR setup needed).
@@ -96,9 +97,12 @@ cost-engine cost-explorer                                  # the last complete m
 cost-engine cost-explorer --start 2026-05-01 --end 2026-06-01
 ```
 
-`cost-explorer` defaults to the **most recent complete calendar month**, so the
-`$/mo` figure reflects a full month rather than a partial current one. Pass
-`--start`/`--end` (end exclusive) for any other window.
+Both default to the **most recent complete calendar month**, so the `$/mo` figure
+reflects a full month, not a partial current one. AWS keeps rewriting the
+in-progress month's CUR, so `s3` reads the billing period from the object path
+rather than picking the newest file. Override with `--month YYYY-MM`, or
+`--latest` for the current partial month; `cost-explorer` takes `--start`/`--end`
+(end exclusive).
 
 Use **`s3`** for the full picture: it reads the line-item CUR, so every rule and
 breakdown works. **`cost-explorer`** is the quick path with no setup, but the API
