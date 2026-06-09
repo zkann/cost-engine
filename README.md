@@ -39,14 +39,37 @@ INFO   Untagged spend can't be allocated                  -         -    90%
 
 ## Run it on your own data
 
-Export your CUR to parquet or CSV (Athena `UNLOAD`, or an S3 CUR export) and
-point the tool at the file:
+### Getting a CUR file
+
+A Cost & Usage Report isn't on by default. You enable it once, and AWS delivers
+it to an S3 bucket on a schedule.
+
+1. In the AWS console, open **Billing and Cost Management -> Data Exports** (older
+   accounts call it **Cost & Usage Reports**). Create an export to an S3 bucket
+   you own, with **Parquet** output (recommended) or CSV. Turn on the resource
+   IDs and tags options so the resource-level rules have data to work with.
+2. Wait for the first delivery (usually within 24 hours; it refreshes a few times
+   a day after that).
+3. Download the latest object from the export's S3 prefix and point the tool at
+   it:
 
 ```bash
+aws s3 cp s3://your-cur-bucket/path/to/latest.parquet ./my-cur.parquet
 cost-engine report --input my-cur.parquet
-cost-engine report --input my-cur.parquet --format md  --out report.md
+cost-engine report --input my-cur.parquet --format md   --out report.md
 cost-engine report --input my-cur.parquet --format json --out report.json
 ```
+
+If you already query a CUR through Athena, an `UNLOAD ... TO 's3://...' FORMAT
+PARQUET` of a single month works just as well.
+
+**A note on column names.** `cost-engine` expects the Athena/Glue-normalized CUR
+columns, where slashes and colons become underscores (`line_item_unblended_cost`,
+`resource_tags_user_team`, and so on), which is what a CUR queried through Athena
+gives you. The full expected set is in
+[`schema.py`](src/cost_engine/schema.py); if a file is missing columns, the
+loader tells you exactly which. Direct pulls from Cost Explorer and an S3 CUR, no
+manual download, with the column mapping handled for you, are coming in Phase 2.
 
 The file stays on your machine. `cost-engine` makes no network calls to analyze
 it. See [SECURITY.md](SECURITY.md) for the full trust model.
