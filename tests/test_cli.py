@@ -4,11 +4,26 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from typer.testing import CliRunner
 
-from cost_engine.cli import app
+from cost_engine.cli import _load_or_exit, app
 
 runner = CliRunner()
+
+
+def test_load_or_exit_turns_aws_error_into_clean_exit() -> None:
+    import typer
+
+    class NoSuchBucket(Exception):
+        pass
+
+    def boom():
+        raise NoSuchBucket("The specified bucket does not exist")
+
+    with pytest.raises(typer.Exit) as exc_info:
+        _load_or_exit(boom, what="S3 read")
+    assert exc_info.value.exit_code == 1
 
 
 def test_demo_rich_runs() -> None:
