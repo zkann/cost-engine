@@ -14,6 +14,7 @@ from cost_engine.analyze import analyze  # noqa: E402
 from cost_engine.analyze.rules import ALL_RULES  # noqa: E402
 from cost_engine.ingest.cost_explorer import (  # noqa: E402
     CE_UNSUPPORTED_RULE_IDS,
+    _default_period,
     load_from_cost_explorer,
 )
 
@@ -70,6 +71,21 @@ def test_paginates() -> None:
         df = load_from_cost_explorer(START, END, client=client)
     assert df.height == 2
     assert df[S.UNBLENDED_COST].sum() == pytest.approx(1500.0)
+
+
+def test_default_period_is_a_complete_prior_month() -> None:
+    from datetime import UTC, datetime
+
+    start, end = _default_period()
+    today = datetime.now(UTC).date()
+    # Both ends are month boundaries, end is the first of the current month
+    # (exclusive), and start is the first of the month before it.
+    assert start.day == 1 and end.day == 1
+    assert end == today.replace(day=1)
+    assert start < end
+    # Exactly one calendar month wide.
+    months = (end.year - start.year) * 12 + (end.month - start.month)
+    assert months == 1
 
 
 def test_supported_rules_fire_unsupported_skipped() -> None:

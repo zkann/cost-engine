@@ -17,7 +17,7 @@ imported lazily; install with ``pip install cost-engine[aws]``.
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -45,9 +45,39 @@ def _require_ce_client(client):
 
 
 def _default_period() -> tuple[date, date]:
-    """Current month to date. End is exclusive, per the Cost Explorer API."""
-    today = datetime.now(UTC).date()
-    return today.replace(day=1), today
+    """The most recent complete calendar month.
+
+    A partial current month understates a monthly bill and makes the ``$/mo``
+    figure (and the x12 annualized savings) misleading, so the default is the
+    last full month: start = first of that month, end = first of the current
+    month (exclusive, per the Cost Explorer API). Pass explicit start/end to
+    analyze a different window.
+    """
+    first_of_this_month = datetime.now(UTC).date().replace(day=1)
+    last_month_end = first_of_this_month  # exclusive: captures through last month
+    last_month_start = (first_of_this_month - timedelta(days=1)).replace(day=1)
+    return last_month_start, last_month_end
+
+
+def caller_identity_label() -> str | None:
+    """Best-effort 'account <id> . <region>' for the active credentials.
+
+    Cost Explorer data carries no account id, so the report can't show which
+    account it came from. This labels the *calling credentials* via STS, the
+    closest honest signal. Returns None (never raises) if boto3 is missing or the
+    call is denied; a missing label must not break a report. Note: with a payer /
+    management account the data is consolidated across linked accounts while this
+    shows only the payer, hence 'credentials', not 'this data is for'.
+    """
+    try:
+        import boto3
+
+        session = boto3.session.Session()
+        account = session.client("sts").get_caller_identity()["Account"]
+    except Exception:
+        return None
+    region = session.region_name
+    return f"credentials: account {account}" + (f" ({region})" if region else "")
 
 
 def load_from_cost_explorer(

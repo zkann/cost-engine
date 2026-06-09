@@ -4,8 +4,28 @@ from __future__ import annotations
 
 import json
 
-from cost_engine.analyze import analyze, build_breakdowns, total_cost
+from cost_engine.analyze import analyze, build_breakdowns, distinct_accounts, total_cost
 from cost_engine.report import render_json, render_markdown, summarize
+
+
+def test_distinct_accounts_from_synthetic(synthetic_df) -> None:
+    accts = distinct_accounts(synthetic_df)
+    assert accts == ["112233445566", "223344556677", "334455667788"]
+
+
+def test_markdown_shows_provenance_when_set(synthetic_df) -> None:
+    r = analyze(synthetic_df)
+    r.source = "file: my-cur.parquet"
+    r.account_note = "accounts: 112233445566"
+    md = render_markdown(r)
+    assert "**Source:** file: my-cur.parquet" in md
+    assert "**Account:** accounts: 112233445566" in md
+
+
+def test_markdown_omits_provenance_when_absent(synthetic_df) -> None:
+    md = render_markdown(analyze(synthetic_df))
+    assert "**Source:**" not in md
+    assert "**Account:**" not in md
 
 
 def test_analyze_assembles_full_report(synthetic_df) -> None:

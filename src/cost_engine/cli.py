@@ -21,12 +21,23 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from .analyze import analyze
+from .analyze import analyze, distinct_accounts
 from .analyze.rules import ALL_RULES
 from .ingest import generate_synthetic_cur, load_cur, load_cur_from_s3, load_from_cost_explorer
-from .ingest.cost_explorer import CE_UNSUPPORTED_RULE_IDS
+from .ingest.cost_explorer import CE_UNSUPPORTED_RULE_IDS, caller_identity_label
 from .models import Report, Severity
 from .report import render_json, render_markdown, summarize
+
+
+def _account_note_from_data(df) -> str:
+    """Provenance from the data itself: which account(s) the rows belong to."""
+    accounts = distinct_accounts(df)
+    if not accounts:
+        return ""
+    shown = ", ".join(accounts[:5])
+    if len(accounts) > 5:
+        shown += f", +{len(accounts) - 5} more"
+    return f"accounts: {shown}"
 
 app = typer.Typer(
     add_completion=False,
@@ -76,6 +87,13 @@ def _print_rich(report: Report) -> None:
         f"${report.total_estimated_monthly_savings:,.0f}/mo "
         f"({report.savings_pct_of_spend:.0%}, ${report.total_annual_savings:,.0f}/yr)"
     )
+    provenance = []
+    if report.source:
+        provenance.append(f"[dim]source: {report.source}[/dim]")
+    if report.account_note:
+        provenance.append(f"[dim]{report.account_note}[/dim]")
+    if provenance:
+        head += "\n" + "\n".join(provenance)
     console.print(Panel(head, title="cost-engine", border_style="green"))
 
     if report.executive_summary:
@@ -116,6 +134,8 @@ def demo(
     """Analyze the built-in synthetic AWS account."""
     df = generate_synthetic_cur(period=date.fromisoformat(period), seed=seed)
     report = summarize(analyze(df), use_llm=not no_llm)
+    report.source = "synthetic account (generated, not real AWS data)"
+    report.account_note = _account_note_from_data(df)
     _emit(report, fmt, out)
 
 
@@ -129,6 +149,8 @@ def report(
     """Analyze a CUR file (parquet or CSV)."""
     df = load_cur(input)
     rep = summarize(analyze(df), use_llm=not no_llm)
+    rep.source = f"file: {input}"
+    rep.account_note = _account_note_from_data(df)
     _emit(rep, fmt, out)
 
 
@@ -152,6 +174,9 @@ def s3(
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
     rep = summarize(analyze(df), use_llm=not no_llm)
+    target = key if key else f"{prefix} (latest)"
+    rep.source = f"s3://{bucket}/{target}"
+    rep.account_note = _account_note_from_data(df)  # the CUR carries the account id
     _emit(rep, fmt, out)
 
 
@@ -178,6 +203,9 @@ def cost_explorer(
         raise typer.Exit(1) from exc
     supported = [r for r in ALL_RULES if r.rule_id not in CE_UNSUPPORTED_RULE_IDS]
     rep = summarize(analyze(df, rules=supported), use_llm=not no_llm)
+    rep.source = "Cost Explorer API"
+    # Cost Explorer data has no account id; label the calling credentials instead.
+    rep.account_note = caller_identity_label() or ""
     if fmt is Format.rich:
         console.print(
             "[dim]Cost Explorer source: untagged-spend and savings-plan-coverage "

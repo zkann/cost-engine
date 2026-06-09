@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .aggregate import build_breakdowns, total_cost
+from .aggregate import build_breakdowns, distinct_accounts, total_cost
 from .engine import analyze
 
-__all__ = ["analyze", "build_breakdowns", "total_cost"]
+__all__ = ["analyze", "build_breakdowns", "distinct_accounts", "total_cost"]

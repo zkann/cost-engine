@@ -25,6 +25,12 @@ def total_cost(df: pl.DataFrame) -> float:
     return round(_usage_only(df)[S.UNBLENDED_COST].sum() or 0.0, 2)
 
 
+def distinct_accounts(df: pl.DataFrame) -> list[str]:
+    """Sorted distinct, non-null account ids present in the data."""
+    vals = df.filter(pl.col(S.ACCOUNT_ID).is_not_null())[S.ACCOUNT_ID].unique().to_list()
+    return sorted(str(v) for v in vals)
+
+
 def build_breakdown(df: pl.DataFrame, dimension: str, top_n: int = 12) -> Breakdown:
     if dimension not in DIMENSIONS:
         raise ValueError(f"unknown dimension {dimension!r}; expected {list(DIMENSIONS)}")

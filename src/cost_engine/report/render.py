@@ -43,6 +43,10 @@ def render_markdown(report: Report) -> str:
     # Headline numbers.
     lines.append("## Summary")
     lines.append("")
+    if report.source:
+        lines.append(f"- **Source:** {report.source}")
+    if report.account_note:
+        lines.append(f"- **Account:** {report.account_note}")
     lines.append(f"- **Total spend:** {_money(report.total_cost)}/month")
     lines.append(
         f"- **Estimated recoverable:** {_money(report.total_estimated_monthly_savings)}/month "

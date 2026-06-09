@@ -89,9 +89,13 @@ cost-engine s3 --bucket your-cur-bucket --prefix exports/cur/
 cost-engine s3 --bucket your-cur-bucket --key path/to/exact-file.parquet
 
 # Fast top-line: pull from the Cost Explorer API (no CUR setup needed).
-cost-engine cost-explorer
+cost-engine cost-explorer                                  # the last complete month
 cost-engine cost-explorer --start 2026-05-01 --end 2026-06-01
 ```
+
+`cost-explorer` defaults to the **most recent complete calendar month**, so the
+`$/mo` figure reflects a full month rather than a partial current one. Pass
+`--start`/`--end` (end exclusive) for any other window.
 
 Use **`s3`** for the full picture: it reads the line-item CUR, so every rule and
 breakdown works. **`cost-explorer`** is the quick path with no setup, but the API
