@@ -19,8 +19,13 @@ git clone https://github.com/zkann/cost-engine
 cd cost-engine
 uv venv && uv pip install -e .
 
-cost-engine demo            # analyze the built-in synthetic account
+uv run cost-engine demo     # analyze the built-in synthetic account
 ```
+
+`uv run` finds the project's virtualenv without activating it. If you prefer to
+call `cost-engine` directly, activate first with `source .venv/bin/activate`. The
+`s3` and `cost-explorer` commands also need the AWS extra: `uv pip install -e
+'.[aws]'`.
 
 Output (synthetic data):
 
