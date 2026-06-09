@@ -200,7 +200,9 @@ def _print_rich(report: Report) -> None:
         body = report.executive_summary
         if report.next_step:
             body += f"\n\n[bold]Next step:[/bold] {report.next_step}"
-        console.print(Panel(body, title="Executive summary", border_style="blue"))
+        src = {"llm": "Claude", "fallback": "template"}.get(report.summary_source)
+        title = f"Executive summary [dim]({src})[/dim]" if src else "Executive summary"
+        console.print(Panel(body, title=title, border_style="blue"))
 
     table = Table(title="Opportunities", header_style="bold")
     table.add_column("Pri")
