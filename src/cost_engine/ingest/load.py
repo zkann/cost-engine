@@ -1,8 +1,9 @@
 """Load a cost dataset from a parquet or CSV file into the canonical schema.
 
-Used for the checked-in sample CUR and, in practice, for a CUR exported from
-Athena or unloaded from S3. Validates that the required columns are present and
-coerces them to the schema dtypes so downstream code can rely on the contract.
+Used for the checked-in sample CUR and for a CUR exported from Athena or
+unloaded from S3. Column normalization (see ``normalize.to_canonical``) means the
+file can use either the raw export spelling (``lineItem/UnblendedCost``) or the
+Athena-normalized spelling (``line_item_unblended_cost``).
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ from pathlib import Path
 
 import polars as pl
 
-from .. import schema as S
+from .normalize import to_canonical
 
 
 def load_cur(path: str | Path) -> pl.DataFrame:
@@ -26,11 +27,4 @@ def load_cur(path: str | Path) -> pl.DataFrame:
     else:
         raise ValueError(f"unsupported file type {p.suffix!r}; use .parquet or .csv")
 
-    missing = [c for c in S.SCHEMA if c not in df.columns]
-    if missing:
-        raise ValueError(f"{p.name} is missing required CUR columns: {missing}")
-
-    # Keep only known columns, in schema order, coerced to the right dtypes.
-    return df.select(
-        [pl.col(name).cast(dtype, strict=False) for name, dtype in S.SCHEMA.items()]
-    )
+    return to_canonical(df)

@@ -1,6 +1,6 @@
 [project]
 name = "cost-engine"
-version = "0.1.0"
+version = "0.2.0"
 description = "FinOps cost analysis engine: ingest AWS Cost & Usage Report data, find savings opportunities, and generate dollar-quantified reports."
 readme = "README.md"
 requires-python = ">=3.11"

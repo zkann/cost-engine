@@ -18,7 +18,8 @@ jobs:
       - name: Set up environment
         run: uv venv --python 3.12
       - name: Install
-        run: uv pip install -e ".[dev]"
+        # aws extra so the S3 / Cost Explorer connector tests run (stubbed, no live AWS).
+        run: uv pip install -e ".[dev,aws]"
       - name: Lint
         run: uv run ruff check src tests
       - name: Test

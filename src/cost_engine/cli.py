@@ -1,9 +1,13 @@
 """cost-engine command line.
 
-    cost-engine demo                 analyze the built-in synthetic account
-    cost-engine demo --format json   machine-readable report
-    cost-engine report -i cur.parquet   analyze a real/sample CUR file
-    cost-engine gen-sample           write the sample CUR to data/sample-cur/
+    cost-engine demo                       analyze the built-in synthetic account
+    cost-engine report -i cur.parquet      analyze a local CUR file
+    cost-engine s3 --bucket B --prefix P   pull the latest CUR from S3 and analyze
+    cost-engine cost-explorer              pull a top-line dataset from Cost Explorer
+    cost-engine gen-sample                 write the sample CUR to data/sample-cur/
+
+The s3 and cost-explorer commands need the optional AWS deps:
+    pip install 'cost-engine[aws]'
 """
 
 from __future__ import annotations
@@ -18,8 +22,9 @@ from rich.panel import Panel
 from rich.table import Table
 
 from .analyze import analyze
-from .ingest import generate_synthetic_cur
-from .ingest.load import load_cur
+from .analyze.rules import ALL_RULES
+from .ingest import generate_synthetic_cur, load_cur, load_cur_from_s3, load_from_cost_explorer
+from .ingest.cost_explorer import CE_UNSUPPORTED_RULE_IDS
 from .models import Report, Severity
 from .report import render_json, render_markdown, summarize
 
@@ -124,6 +129,60 @@ def report(
     """Analyze a CUR file (parquet or CSV)."""
     df = load_cur(input)
     rep = summarize(analyze(df), use_llm=not no_llm)
+    _emit(rep, fmt, out)
+
+
+@app.command()
+def s3(
+    bucket: str = typer.Option(..., "--bucket", "-b", help="S3 bucket holding the CUR."),
+    prefix: str | None = typer.Option(
+        None, "--prefix", "-p", help="Prefix to search; the latest object is used."
+    ),
+    key: str | None = typer.Option(None, "--key", "-k", help="Exact object key."),
+    fmt: Format = typer.Option(Format.rich, "--format", "-f", help="Output format."),
+    no_llm: bool = typer.Option(False, "--no-llm", help="Skip the LLM summary."),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Write to file."),
+) -> None:
+    """Pull a CUR straight from S3 (full fidelity) and analyze it."""
+    if not key and not prefix:
+        raise typer.BadParameter("provide --prefix or --key")
+    try:
+        df = load_cur_from_s3(bucket, prefix=prefix, key=key)
+    except ImportError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+    rep = summarize(analyze(df), use_llm=not no_llm)
+    _emit(rep, fmt, out)
+
+
+@app.command(name="cost-explorer")
+def cost_explorer(
+    start: str | None = typer.Option(None, "--start", help="Start date YYYY-MM-DD."),
+    end: str | None = typer.Option(None, "--end", help="End date YYYY-MM-DD (exclusive)."),
+    fmt: Format = typer.Option(Format.rich, "--format", "-f", help="Output format."),
+    no_llm: bool = typer.Option(False, "--no-llm", help="Skip the LLM summary."),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Write to file."),
+) -> None:
+    """Pull a top-line dataset from Cost Explorer and analyze it.
+
+    Cost Explorer carries no tags or purchase term, so the untagged-spend and
+    Savings Plan coverage rules are skipped. Use `s3` for full fidelity.
+    """
+    try:
+        df = load_from_cost_explorer(
+            date.fromisoformat(start) if start else None,
+            date.fromisoformat(end) if end else None,
+        )
+    except ImportError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+    supported = [r for r in ALL_RULES if r.rule_id not in CE_UNSUPPORTED_RULE_IDS]
+    rep = summarize(analyze(df, rules=supported), use_llm=not no_llm)
+    if fmt is Format.rich:
+        console.print(
+            "[dim]Cost Explorer source: untagged-spend and savings-plan-coverage "
+            "rules skipped (need the CUR). Use `cost-engine s3` for full fidelity.[/dim]"
+        )
     _emit(rep, fmt, out)
 
 

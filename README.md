@@ -68,11 +68,31 @@ columns, where slashes and colons become underscores (`line_item_unblended_cost`
 `resource_tags_user_team`, and so on), which is what a CUR queried through Athena
 gives you. The full expected set is in
 [`schema.py`](src/cost_engine/schema.py); if a file is missing columns, the
-loader tells you exactly which. Direct pulls from Cost Explorer and an S3 CUR, no
-manual download, with the column mapping handled for you, are coming in Phase 2.
+loader tells you exactly which (normalization handles either spelling).
 
-The file stays on your machine. `cost-engine` makes no network calls to analyze
-it. See [SECURITY.md](SECURITY.md) for the full trust model.
+A local file stays on your machine. `cost-engine` makes no network calls to
+analyze it. See [SECURITY.md](SECURITY.md) for the full trust model.
+
+### Or pull from AWS directly
+
+With the AWS extra installed (`pip install 'cost-engine[aws]'`) and a read-only
+credential on the standard boto3 chain, the tool fetches the data for you.
+
+```bash
+# Full fidelity: find the latest CUR object under an S3 prefix and analyze it.
+cost-engine s3 --bucket your-cur-bucket --prefix exports/cur/
+cost-engine s3 --bucket your-cur-bucket --key path/to/exact-file.parquet
+
+# Fast top-line: pull from the Cost Explorer API (no CUR setup needed).
+cost-engine cost-explorer
+cost-engine cost-explorer --start 2026-05-01 --end 2026-06-01
+```
+
+Use **`s3`** for the full picture: it reads the line-item CUR, so every rule and
+breakdown works. **`cost-explorer`** is the quick path with no setup, but the API
+returns cost by service and usage type only, with no resource IDs, tags, or
+purchase term, so the untagged-spend and Savings Plan coverage rules are skipped
+on that source. A read-only billing/Cost Explorer policy is all either needs.
 
 ## What it checks
 
@@ -109,7 +129,7 @@ cost-engine demo
 
 ```bash
 uv pip install -e ".[dev]"
-uv run pytest        # 31 tests
+uv run pytest        # 39 tests
 uv run ruff check src tests
 ```
 
