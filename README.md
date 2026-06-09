@@ -149,6 +149,38 @@ The CLI also auto-loads a `.env` file from the current directory (see
 Only the CLI does this. Importing `cost_engine` as a library never reads
 `.env`, so a service embedding it can't pick up secrets from disk.
 
+## Use it from Claude (MCP)
+
+The engine ships an MCP server, so Claude Desktop, Claude Code, or any MCP
+client can analyze your spend conversationally: "pull last month's CUR from my
+bucket and tell me where the money went."
+
+```bash
+uv pip install -e ".[mcp,aws]"
+
+# Claude Code
+claude mcp add cost-engine -- uv run --directory /path/to/cost-engine cost-engine-mcp
+```
+
+Or in Claude Desktop's `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "cost-engine": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/cost-engine", "cost-engine-mcp"]
+    }
+  }
+}
+```
+
+Tools: `analyze_demo` (synthetic, zero credentials), `analyze_cur_file`,
+`analyze_s3`, `analyze_cost_explorer`, and `list_rules`. Same trust model as
+the CLI: local stdio, your own AWS credential chain, no listener. The engine's
+own LLM summary is disabled on this path, the client model narrates the
+deterministic report itself.
+
 ## Develop
 
 ```bash

@@ -18,8 +18,8 @@ jobs:
       - name: Set up environment
         run: uv venv --python 3.12
       - name: Install
-        # aws extra so the S3 / Cost Explorer connector tests run (stubbed, no live AWS).
-        run: uv pip install -e ".[dev,aws]"
+        # aws + mcp extras so the connector and MCP-server tests run (no live AWS).
+        run: uv pip install -e ".[dev,aws,mcp]"
       - name: Lint
         run: uv run ruff check src tests
       - name: Test
@@ -35,7 +35,7 @@ jobs:
       - name: Set up environment
         run: uv venv --python 3.12
       - name: Install with all extras
-        run: uv pip install -e ".[aws,llm]" pip-audit
+        run: uv pip install -e ".[aws,llm,mcp]" pip-audit
       - name: Dependency audit
         # Skip the local cost-engine package (editable, not on PyPI). Third-party
         # deps are still audited and a real advisory fails the job. (--strict is

@@ -26,6 +26,16 @@ own data and about depending on it from another service.
 - **No `eval` / `exec` / `pickle` / `yaml.load` / shell-out.** Input is parsed as
   data, never executed.
 
+## The MCP server
+
+`cost-engine-mcp` has the same trust model as the CLI: it runs locally and
+speaks stdio to the MCP client that launched it; there is no network listener.
+AWS access goes through the same boto3 credential chain, and the analysis
+itself makes no other outbound calls (the optional Claude summary is disabled
+on this path; the client model does its own narration). What the client model
+sees is the report content, so connect it to clients you trust with your
+billing data.
+
 ## Running it on your own AWS data
 
 When you point the tool at a CUR you exported, the file stays on your machine.
