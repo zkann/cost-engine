@@ -68,12 +68,15 @@ cost-engine report --input my-cur.parquet --format json --out report.json
 If you already query a CUR through Athena, an `UNLOAD ... TO 's3://...' FORMAT
 PARQUET` of a single month works just as well.
 
-**A note on column names.** `cost-engine` expects the Athena/Glue-normalized CUR
-columns, where slashes and colons become underscores (`line_item_unblended_cost`,
-`resource_tags_user_team`, and so on), which is what a CUR queried through Athena
-gives you. The full expected set is in
-[`schema.py`](src/cost_engine/schema.py); if a file is missing columns, the
-loader tells you exactly which (normalization handles either spelling).
+**A note on column names.** The loader accepts either the raw export spelling
+(`lineItem/UnblendedCost`) or the Athena/Glue-normalized one
+(`line_item_unblended_cost`); it normalizes both. Only a small core set is
+required (period, account, usage type, line-item type, cost). Optional columns
+vary by CUR (tags are opt-in, `product`/`resource_tags` are nested in CUR 2.0),
+so a missing one is filled rather than rejected: the service name falls back to
+the product code, and rules that depend on an absent column simply don't fire,
+with a note saying so. The full schema is in
+[`schema.py`](src/cost_engine/schema.py).
 
 A local file stays on your machine. `cost-engine` makes no network calls to
 analyze it. See [SECURITY.md](SECURITY.md) for the full trust model.

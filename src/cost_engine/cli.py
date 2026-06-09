@@ -40,6 +40,26 @@ def _account_note_from_data(df) -> str:
     return f"accounts: {shown}"
 
 
+# Columns whose absence (all-null) limits a breakdown or rule, with what's lost.
+_GAP_COLUMNS = {
+    "product_region": "region breakdown",
+    "resource_tags_user_team": "untagged-spend rule + team breakdown",
+    "pricing_term": "Savings Plan coverage rule",
+}
+
+
+def _data_gap_note(df) -> str:
+    """Name the columns this CUR doesn't carry, so missing output isn't a mystery."""
+    gaps = [
+        what
+        for col, what in _GAP_COLUMNS.items()
+        if col in df.columns and df[col].null_count() == df.height
+    ]
+    if not gaps:
+        return ""
+    return "this CUR has no " + ", ".join(gaps) + " data; those parts are skipped"
+
+
 # Hints for the common AWS failure modes, keyed by exception class name so we
 # don't import botocore at module load (it's an optional dep).
 _AWS_HINTS = {
@@ -189,6 +209,8 @@ def report(
     rep = summarize(analyze(df), use_llm=not no_llm)
     rep.source = f"file: {input}"
     rep.account_note = _account_note_from_data(df)
+    if fmt is Format.rich and (gap := _data_gap_note(df)):
+        console.print(f"[dim]{gap}[/dim]")
     _emit(rep, fmt, out)
 
 
@@ -213,6 +235,8 @@ def s3(
     target = key if key else f"{prefix} (latest)"
     rep.source = f"s3://{bucket}/{target}"
     rep.account_note = _account_note_from_data(df)  # the CUR carries the account id
+    if fmt is Format.rich and (gap := _data_gap_note(df)):
+        console.print(f"[dim]{gap}[/dim]")
     _emit(rep, fmt, out)
 
 

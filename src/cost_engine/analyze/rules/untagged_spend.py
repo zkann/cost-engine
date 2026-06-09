@@ -28,6 +28,13 @@ class UntaggedSpendRule(base.Rule):
         if total <= 0:
             return []
 
+        # If no team tag is visible anywhere, we can't tell "nothing is tagged"
+        # from "this source carries no tag column" (tags are opt-in in a CUR, and
+        # Cost Explorer omits them entirely). Either way there's no signal to act
+        # on, so skip rather than claim 100% untagged.
+        if usage.filter(pl.col(S.TAG_TEAM).is_not_null()).height == 0:
+            return []
+
         untagged = usage.filter(pl.col(S.TAG_TEAM).is_null())
         untagged_cost = base.cost_of(untagged)
         pct = untagged_cost / total

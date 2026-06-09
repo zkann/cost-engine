@@ -50,6 +50,15 @@ def test_untagged_is_governance_not_savings(synthetic_df) -> None:
     assert f.monthly_cost > 0  # there IS unallocable spend to report
 
 
+def test_untagged_skipped_when_no_tags_visible(synthetic_df) -> None:
+    # No team tag visible anywhere: can't tell "nothing tagged" from "no tag
+    # column exported", so the rule stays quiet instead of claiming 100% untagged.
+    from cost_engine import schema as S
+
+    no_tags = synthetic_df.with_columns(pl.lit(None).cast(pl.Utf8).alias(S.TAG_TEAM))
+    assert UntaggedSpendRule().evaluate(no_tags) == []
+
+
 def test_idle_eip_is_fully_recoverable(synthetic_df) -> None:
     f = IdleElasticIpRule().evaluate(synthetic_df)[0]
     # An idle EIP does nothing, so the whole cost is the saving.

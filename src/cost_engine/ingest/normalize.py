@@ -57,19 +57,45 @@ def _derive_pricing_term(df: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+# Columns every rule needs. Without these there's nothing to analyze.
+REQUIRED_COLUMNS = (
+    S.BILL_PERIOD,
+    S.USAGE_DATE,
+    S.ACCOUNT_ID,
+    S.USAGE_TYPE,
+    S.LINE_ITEM_TYPE,
+    S.UNBLENDED_COST,
+)
+
+
 def to_canonical(df: pl.DataFrame) -> pl.DataFrame:
     """Rename, validate, and coerce a raw CUR frame to the canonical schema.
 
-    Raises ``ValueError`` listing any required columns the file lacks (a CUR 2.0
-    export keeps ``product`` and ``resource_tags`` nested; flatten via Athena or
-    a Glue table first).
+    Only a small core set of columns is truly required. CURs vary in what
+    optional columns they carry (tags are opt-in, ``product`` and
+    ``resource_tags`` are nested in CUR 2.0), so any missing optional column is
+    filled with nulls rather than rejected, and the service name falls back to
+    the product code when absent. Rules that depend on a missing column simply
+    don't fire.
+
+    Raises ``ValueError`` only when a core column is missing.
     """
     df = normalize_column_names(df)
-    df = _derive_pricing_term(df)
 
-    missing = [c for c in S.SCHEMA if c not in df.columns]
-    if missing:
-        raise ValueError(f"CUR is missing required columns after normalization: {missing}")
+    missing_required = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing_required:
+        raise ValueError(f"CUR is missing essential columns: {missing_required}")
+
+    # Service name is used for the breakdown; fall back to the product code.
+    if S.SERVICE_NAME not in df.columns and S.PRODUCT_CODE in df.columns:
+        df = df.with_columns(pl.col(S.PRODUCT_CODE).alias(S.SERVICE_NAME))
+
+    # Add any still-missing optional columns as typed nulls.
+    for name, dtype in S.SCHEMA.items():
+        if name not in df.columns:
+            df = df.with_columns(pl.lit(None).cast(dtype).alias(name))
+
+    df = _derive_pricing_term(df)
 
     return df.select(
         [pl.col(name).cast(dtype, strict=False) for name, dtype in S.SCHEMA.items()]
