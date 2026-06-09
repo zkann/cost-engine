@@ -50,6 +50,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+        # Run the gitleaks CLI directly (MIT, no license). The gitleaks-action
+        # wrapper gates on a paid license; the CLI does not. Scans full history
+        # and fails the job on any finding.
+        run: >
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest
+          detect --source=/repo --redact --no-banner --exit-code 1
