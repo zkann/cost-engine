@@ -96,6 +96,9 @@ class Report(BaseModel):
     # or the calling credentials' identity for sources that carry no account id.
     source: str = ""
     account_note: str = ""
+    # Data the source didn't carry, so absent breakdowns/rules are explained
+    # rather than looking like bugs. Set by analyze(); rendered by every surface.
+    data_gaps: list[str] = Field(default_factory=list)
 
     @computed_field
     @property

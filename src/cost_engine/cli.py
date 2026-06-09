@@ -40,35 +40,8 @@ def _account_note_from_data(df) -> str:
     return f"accounts: {shown}"
 
 
-# CUR columns whose absence (all-null) limits a breakdown or rule, named plainly.
-_GAP_COLUMNS = {
-    "product_region": "region",
-    "resource_tags_user_team": "team-tag",
-    "pricing_term": "pricing-term",
-}
-
-
-def _join_and(items: list[str]) -> str:
-    if len(items) <= 1:
-        return "".join(items)
-    if len(items) == 2:
-        return f"{items[0]} and {items[1]}"
-    return ", ".join(items[:-1]) + f" and {items[-1]}"
-
-
-def _data_gap_note(df) -> str:
-    """Name the data this CUR doesn't carry, so missing output isn't a mystery."""
-    missing = [
-        name
-        for col, name in _GAP_COLUMNS.items()
-        if col in df.columns and df[col].null_count() == df.height
-    ]
-    if not missing:
-        return ""
-    return (
-        f"this CUR has no {_join_and(missing)} data, so the related breakdowns "
-        f"and rules are skipped"
-    )
+# Data-gap detection lives in the engine (analyze() populates Report.data_gaps)
+# so every surface — CLI, markdown, JSON consumers like the dashboard — gets it.
 
 
 # Hints for the common AWS failure modes, keyed by exception class name so we
@@ -192,6 +165,8 @@ def _print_rich(report: Report) -> None:
         provenance.append(f"[dim]source: {report.source}[/dim]")
     if report.account_note:
         provenance.append(f"[dim]{report.account_note}[/dim]")
+    for gap in report.data_gaps:
+        provenance.append(f"[dim]· {gap}[/dim]")
     if provenance:
         head += "\n" + "\n".join(provenance)
     console.print(Panel(head, title="cost-engine", border_style="green"))
@@ -278,8 +253,6 @@ def report(
     rep = summarize(analyze(df), use_llm=not no_llm)
     rep.source = f"file: {input}"
     rep.account_note = _account_note_from_data(df)
-    if fmt is Format.rich and (gap := _data_gap_note(df)):
-        console.print(f"[dim]{gap}[/dim]")
     _emit(rep, fmt, out)
 
 
@@ -324,8 +297,6 @@ def s3(
         window = f"{prefix} ({month or 'last complete month'})"
     rep.source = f"s3://{bucket}/{window}"
     rep.account_note = _account_note_from_data(df)  # the CUR carries the account id
-    if fmt is Format.rich and (gap := _data_gap_note(df)):
-        console.print(f"[dim]{gap}[/dim]")
     _emit(rep, fmt, out)
 
 

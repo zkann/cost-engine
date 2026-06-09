@@ -47,6 +47,8 @@ def render_markdown(report: Report) -> str:
         lines.append(f"- **Source:** {report.source}")
     if report.account_note:
         lines.append(f"- **Account:** {report.account_note}")
+    for gap in report.data_gaps:
+        lines.append(f"- **Data gap:** {gap}")
     lines.append(f"- **Total spend:** {_money(report.total_cost)}/month")
     lines.append(
         f"- **Estimated recoverable:** {_money(report.total_estimated_monthly_savings)}/month "

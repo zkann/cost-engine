@@ -26,6 +26,24 @@ _SEVERITY_RANK = {
 }
 
 
+# Columns whose absence (all-null) limits a breakdown or rule, with the
+# user-facing explanation of what's skipped as a result.
+_GAP_COLUMNS: dict[str, str] = {
+    S.REGION: "no region data (region breakdown skipped)",
+    S.TAG_TEAM: "no team-tag data (team breakdown and untagged-spend rule skipped)",
+    S.PRICING_TERM: "no pricing-term data (commitment-coverage rules skipped)",
+}
+
+
+def _data_gaps(df: pl.DataFrame) -> list[str]:
+    """Name the data this source doesn't carry, so missing output isn't a mystery."""
+    return [
+        note
+        for col, note in _GAP_COLUMNS.items()
+        if col in df.columns and df[col].null_count() == df.height
+    ]
+
+
 def _billing_period(df: pl.DataFrame) -> date:
     vals = df[S.BILL_PERIOD].drop_nulls().unique().to_list()
     return vals[0] if vals else date.today()
@@ -81,4 +99,5 @@ def analyze(df: pl.DataFrame, rules: list[Rule] | None = None) -> Report:
         savings_pct_of_spend=(savings / total if total else 0.0),
         breakdowns=build_breakdowns(df),
         findings=findings,
+        data_gaps=_data_gaps(df),
     )

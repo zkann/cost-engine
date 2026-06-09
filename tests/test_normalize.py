@@ -55,6 +55,21 @@ def test_resilient_cur_still_analyzes() -> None:
     assert build_breakdowns(df)
 
 
+def test_data_gaps_reported_for_sparse_cur() -> None:
+    report = analyze(to_canonical(_minimal_raw_cur()))
+    joined = " ".join(report.data_gaps)
+    assert "region" in joined
+    assert "team-tag" in joined
+    # pricing_term derives empty here too
+    assert "pricing-term" in joined
+
+
+def test_no_data_gaps_on_full_synthetic() -> None:
+    from cost_engine.ingest import generate_synthetic_cur
+
+    assert analyze(generate_synthetic_cur()).data_gaps == []
+
+
 def test_missing_essential_column_raises() -> None:
     raw = _minimal_raw_cur().drop("lineItem/UnblendedCost")
     with pytest.raises(ValueError, match="essential columns"):
