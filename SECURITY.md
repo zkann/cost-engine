@@ -13,9 +13,13 @@ own data and about depending on it from another service.
 ## What the engine does not do
 
 - **No server, no listener, no inbound network.** There is nothing to connect to.
-- **No secret storage.** It never writes credentials to disk or reads a secrets
-  file. The only credential it touches is `ANTHROPIC_API_KEY` from the
-  environment, and only if you opt into the LLM summary.
+- **No secret storage.** It never writes credentials to disk. The only
+  credential it touches is `ANTHROPIC_API_KEY` from the environment, and only if
+  you opt into the LLM summary. The **CLI** convenience-loads a `.env` from the
+  current directory (real environment variables win); the **library** never
+  reads `.env` or any file for credentials, so a service embedding
+  `cost_engine`, like the sandboxed OpsCenter worker, cannot have secrets
+  resurrected from disk.
 - **No outbound calls during analysis.** The only network call in the codebase is
   the optional Claude summary. With no key set, even that is skipped. Parsing and
   analyzing a CUR makes zero network requests.

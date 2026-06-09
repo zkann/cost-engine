@@ -144,6 +144,11 @@ export ANTHROPIC_API_KEY=sk-...
 cost-engine demo
 ```
 
+The CLI also auto-loads a `.env` file from the current directory (see
+[.env.example](.env.example)); real environment variables take precedence.
+Only the CLI does this. Importing `cost_engine` as a library never reads
+`.env`, so a service embedding it can't pick up secrets from disk.
+
 ## Develop
 
 ```bash

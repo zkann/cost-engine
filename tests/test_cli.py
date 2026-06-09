@@ -12,6 +12,39 @@ from cost_engine.cli import _load_or_exit, app
 runner = CliRunner()
 
 
+def test_load_dotenv_sets_without_overriding(tmp_path, monkeypatch) -> None:
+    import os
+
+    from cost_engine.cli import _load_dotenv
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "# comment\n"
+        "export FOO_FROM_DOTENV='quoted value'\n"
+        "BAR_FROM_DOTENV=plain\n"
+        "ALREADY_SET=from-dotenv\n"
+        "not a kv line\n"
+    )
+    monkeypatch.setenv("ALREADY_SET", "from-real-env")
+    monkeypatch.delenv("FOO_FROM_DOTENV", raising=False)
+    monkeypatch.delenv("BAR_FROM_DOTENV", raising=False)
+
+    _load_dotenv(env_file)
+    assert os.environ["FOO_FROM_DOTENV"] == "quoted value"
+    assert os.environ["BAR_FROM_DOTENV"] == "plain"
+    # A real environment variable always beats the .env file.
+    assert os.environ["ALREADY_SET"] == "from-real-env"
+
+    monkeypatch.delenv("FOO_FROM_DOTENV", raising=False)
+    monkeypatch.delenv("BAR_FROM_DOTENV", raising=False)
+
+
+def test_load_dotenv_missing_file_is_noop(tmp_path) -> None:
+    from cost_engine.cli import _load_dotenv
+
+    _load_dotenv(tmp_path / "no-such.env")  # must not raise
+
+
 def test_load_or_exit_turns_aws_error_into_clean_exit() -> None:
     import typer
 

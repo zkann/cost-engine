@@ -116,6 +116,37 @@ app = typer.Typer(
 console = Console()
 
 
+def _load_dotenv(path: Path = Path(".env")) -> None:
+    """Load KEY=VALUE pairs from ./.env into the environment, CLI only.
+
+    Real environment variables always win (setdefault), and this is invoked
+    from the CLI callback, never from library code: a service importing
+    cost_engine must not have secrets resurrected from a file on disk (the
+    OpsCenter app runs the engine in a deliberately secret-free sandbox).
+    """
+    import os
+
+    if not path.is_file():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        line = line.removeprefix("export ")
+        key, sep, value = line.partition("=")
+        if not sep:
+            continue
+        key = key.strip()
+        value = value.strip().strip("'\"")
+        if key:
+            os.environ.setdefault(key, value)
+
+
+@app.callback()
+def _main() -> None:
+    _load_dotenv()
+
+
 class Format(StrEnum):
     rich = "rich"
     md = "md"
