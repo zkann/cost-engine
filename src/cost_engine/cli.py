@@ -40,24 +40,35 @@ def _account_note_from_data(df) -> str:
     return f"accounts: {shown}"
 
 
-# Columns whose absence (all-null) limits a breakdown or rule, with what's lost.
+# CUR columns whose absence (all-null) limits a breakdown or rule, named plainly.
 _GAP_COLUMNS = {
-    "product_region": "region breakdown",
-    "resource_tags_user_team": "untagged-spend rule + team breakdown",
-    "pricing_term": "Savings Plan coverage rule",
+    "product_region": "region",
+    "resource_tags_user_team": "team-tag",
+    "pricing_term": "pricing-term",
 }
 
 
+def _join_and(items: list[str]) -> str:
+    if len(items) <= 1:
+        return "".join(items)
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return ", ".join(items[:-1]) + f" and {items[-1]}"
+
+
 def _data_gap_note(df) -> str:
-    """Name the columns this CUR doesn't carry, so missing output isn't a mystery."""
-    gaps = [
-        what
-        for col, what in _GAP_COLUMNS.items()
+    """Name the data this CUR doesn't carry, so missing output isn't a mystery."""
+    missing = [
+        name
+        for col, name in _GAP_COLUMNS.items()
         if col in df.columns and df[col].null_count() == df.height
     ]
-    if not gaps:
+    if not missing:
         return ""
-    return "this CUR has no " + ", ".join(gaps) + " data; those parts are skipped"
+    return (
+        f"this CUR has no {_join_and(missing)} data, so the related breakdowns "
+        f"and rules are skipped"
+    )
 
 
 # Hints for the common AWS failure modes, keyed by exception class name so we
@@ -287,8 +298,9 @@ def cost_explorer(
     rep.account_note = caller_identity_label() or ""
     if fmt is Format.rich:
         console.print(
-            "[dim]Cost Explorer source: untagged-spend and savings-plan-coverage "
-            "rules skipped (need the CUR). Use `cost-engine s3` for full fidelity.[/dim]"
+            "[dim]Cost Explorer source: the untagged-spend and commitment-coverage "
+            "rules are skipped (need the CUR). Use `cost-engine s3` for full "
+            "fidelity.[/dim]"
         )
     _emit(rep, fmt, out)
 

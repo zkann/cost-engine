@@ -100,12 +100,15 @@ def _fallback_summary(report: Report) -> str:
     top_clause = "; ".join(
         f"{f.title} (${f.estimated_monthly_savings:,.0f}/mo)" for f in top
     )
+    n = len(paying)
+    opportunities = "opportunity" if n == 1 else "opportunities"
+    lead = "The biggest: " if n == 1 else "The two biggest: "
     return (
         f"AWS spend for {report.billing_period:%B %Y} was "
         f"${report.total_cost:,.0f}/month, of which about "
         f"${report.total_estimated_monthly_savings:,.0f}/month "
         f"({report.savings_pct_of_spend:.0%}, ${report.total_annual_savings:,.0f}/year) "
-        f"looks recoverable across {len(paying)} opportunities. The two biggest: "
+        f"looks recoverable across {n} {opportunities}. {lead}"
         f"{top_clause}. Start with the highest-confidence, lowest-effort wins "
         f"(gp2-to-gp3 and idle resources), and validate the commitment-based "
         f"savings against a steady usage baseline before buying."

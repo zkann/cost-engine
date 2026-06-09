@@ -31,7 +31,8 @@ def test_markdown_omits_provenance_when_absent(synthetic_df) -> None:
 def test_analyze_assembles_full_report(synthetic_df) -> None:
     r = analyze(synthetic_df)
     assert r.total_cost == total_cost(synthetic_df)
-    assert len(r.findings) == 6  # all rules fire on the synthetic account
+    assert len(r.findings) == 7  # all rules fire on the synthetic account
+    assert {"savings-plan-coverage", "rds-reserved-coverage"} <= {f.rule_id for f in r.findings}
     assert r.total_estimated_monthly_savings > 0
     assert 0 < r.savings_pct_of_spend < 1
 
@@ -50,6 +51,66 @@ def test_breakdown_shares_sum_to_one(synthetic_df) -> None:
 def test_untagged_shows_in_team_breakdown(synthetic_df) -> None:
     team = next(b for b in build_breakdowns(synthetic_df) if b.dimension == "team")
     assert "untagged" in {s.key for s in team.slices}
+
+
+def test_null_region_not_labeled_untagged(synthetic_df) -> None:
+    import polars as pl
+
+    from cost_engine import schema as S
+    from cost_engine.analyze.aggregate import build_breakdown
+
+    # Null out region on some rows; the null bucket is "no region", not "untagged".
+    df = synthetic_df.with_columns(
+        pl.when(pl.col(S.PRODUCT_CODE) == "AmazonS3")
+        .then(None)
+        .otherwise(pl.col(S.REGION))
+        .alias(S.REGION)
+    )
+    region = build_breakdown(df, "region")
+    keys = {s.key for s in region.slices}
+    assert "no region" in keys
+    assert "untagged" not in keys
+
+
+def test_all_null_dimension_breakdown_suppressed(synthetic_df) -> None:
+    import polars as pl
+
+    from cost_engine import schema as S
+
+    df = synthetic_df.with_columns(pl.lit(None).cast(pl.Utf8).alias(S.REGION))
+    dims = {b.dimension for b in build_breakdowns(df)}
+    assert "region" not in dims  # nothing to break down, so it's dropped
+    assert "service" in dims  # other dimensions still present
+
+
+def test_fallback_summary_singular_grammar() -> None:
+    from datetime import UTC, date, datetime
+
+    from cost_engine.models import Category, Finding, Report, Severity
+
+    report = Report(
+        billing_period=date(2026, 5, 1),
+        generated_at=datetime.now(UTC),
+        total_cost=1000.0,
+        total_estimated_monthly_savings=100.0,
+        savings_pct_of_spend=0.1,
+        findings=[
+            Finding(
+                rule_id="ebs-gp2-to-gp3",
+                title="Migrate gp2 EBS volumes to gp3",
+                category=Category.RIGHTSIZING,
+                severity=Severity.MEDIUM,
+                monthly_cost=500.0,
+                estimated_monthly_savings=100.0,
+                detail="x",
+                recommendation="y",
+            )
+        ],
+    )
+    summarize(report, use_llm=False)
+    s = report.executive_summary
+    assert "1 opportunity" in s and "opportunities" not in s
+    assert "The biggest:" in s and "two biggest" not in s
 
 
 def test_clean_data_has_no_findings(clean_df) -> None:

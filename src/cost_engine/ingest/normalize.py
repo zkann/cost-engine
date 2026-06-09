@@ -86,9 +86,14 @@ def to_canonical(df: pl.DataFrame) -> pl.DataFrame:
     if missing_required:
         raise ValueError(f"CUR is missing essential columns: {missing_required}")
 
-    # Service name is used for the breakdown; fall back to the product code.
+    # Service name is used for the breakdown; fall back to the product code,
+    # mapped to a friendly name where we know one (AmazonRDS -> Amazon RDS).
     if S.SERVICE_NAME not in df.columns and S.PRODUCT_CODE in df.columns:
-        df = df.with_columns(pl.col(S.PRODUCT_CODE).alias(S.SERVICE_NAME))
+        from .service_names import PRODUCT_CODE_NAMES
+
+        df = df.with_columns(
+            pl.col(S.PRODUCT_CODE).replace(PRODUCT_CODE_NAMES).alias(S.SERVICE_NAME)
+        )
 
     # Add any still-missing optional columns as typed nulls.
     for name, dtype in S.SCHEMA.items():

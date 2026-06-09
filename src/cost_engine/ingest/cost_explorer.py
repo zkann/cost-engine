@@ -7,9 +7,10 @@ That is enough for the cost-by-service breakdown and every usage-type savings
 rule (gp2->gp3, idle EIPs, snapshot retention, NAT / data transfer), but it
 carries **no resource IDs, no tags, and no purchase term.**
 
-So two rules can't run on this source and are skipped by the CLI:
+So a few rules can't run on this source and are skipped by the CLI:
 - untagged spend (Cost Explorer didn't fetch tags; absent != untagged), and
-- Savings Plan coverage (needs the on-demand vs committed split).
+- the commitment-coverage rules, Savings Plan and RDS Reserved Instances
+  (they need the on-demand vs committed split).
 
 For those, and for resource-level detail, use the S3 CUR connector. boto3 is
 imported lazily; install with ``pip install cost-engine[aws]``.
@@ -27,8 +28,11 @@ from .. import schema as S
 if TYPE_CHECKING:  # pragma: no cover
     from mypy_boto3_ce import CostExplorerClient
 
-#: Rules that cannot be evaluated from a Cost Explorer dataset (see module docs).
-CE_UNSUPPORTED_RULE_IDS = frozenset({"untagged-spend", "savings-plan-coverage"})
+#: Rules that cannot be evaluated from a Cost Explorer dataset (see module docs):
+#: no tags (untagged) and no purchase term (the commitment-coverage rules).
+CE_UNSUPPORTED_RULE_IDS = frozenset(
+    {"untagged-spend", "savings-plan-coverage", "rds-reserved-coverage"}
+)
 
 
 def _require_ce_client(client):

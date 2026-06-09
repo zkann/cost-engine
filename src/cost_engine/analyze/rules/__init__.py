@@ -6,6 +6,7 @@ from .base import Rule
 from .data_transfer import DataTransferRule
 from .gp2_to_gp3 import Gp2ToGp3Rule
 from .idle_elastic_ip import IdleElasticIpRule
+from .rds_reserved import RdsReservedCoverageRule
 from .savings_plan_coverage import SavingsPlanCoverageRule
 from .snapshot_retention import SnapshotRetentionRule
 from .untagged_spend import UntaggedSpendRule
@@ -16,6 +17,7 @@ ALL_RULES: list[Rule] = [
     Gp2ToGp3Rule(),
     SnapshotRetentionRule(),
     SavingsPlanCoverageRule(),
+    RdsReservedCoverageRule(),
     DataTransferRule(),
     UntaggedSpendRule(),
 ]
@@ -26,6 +28,7 @@ __all__ = [
     "DataTransferRule",
     "Gp2ToGp3Rule",
     "IdleElasticIpRule",
+    "RdsReservedCoverageRule",
     "SavingsPlanCoverageRule",
     "SnapshotRetentionRule",
     "UntaggedSpendRule",

@@ -31,12 +31,13 @@ Output (synthetic data):
 
 ```
 AWS spend May 2026: $41,127/mo
-Recoverable: $6,185/mo (15%, $74,225/yr)
+Recoverable: $7,046/mo (17%, $84,557/yr)
 
 Pri    Opportunity                                   Save/mo   Save/yr  Conf
 HIGH   Cover steady on-demand compute (Savings Plan)  $2,570   $30,845   70%
 MED    Review NAT and cross-AZ data-transfer spend    $1,416   $16,992   50%
 MED    Tighten EBS snapshot retention                 $1,332   $15,984   55%
+MED    Cover steady on-demand RDS (Reserved)            $861   $10,332   65%
 MED    Migrate gp2 EBS volumes to gp3                    $640    $7,680   95%
 LOW    Release idle Elastic IP addresses                $227    $2,724   97%
 INFO   Untagged spend can't be allocated                  -         -    90%
@@ -107,8 +108,9 @@ rather than picking the newest file. Override with `--month YYYY-MM`, or
 Use **`s3`** for the full picture: it reads the line-item CUR, so every rule and
 breakdown works. **`cost-explorer`** is the quick path with no setup, but the API
 returns cost by service and usage type only, with no resource IDs, tags, or
-purchase term, so the untagged-spend and Savings Plan coverage rules are skipped
-on that source. A read-only billing/Cost Explorer policy is all either needs.
+purchase term, so the untagged-spend and commitment-coverage rules (Savings Plan,
+RDS RI) are skipped on that source. A read-only billing/Cost Explorer policy is
+all either needs.
 
 ## What it checks
 
@@ -121,7 +123,8 @@ so no number is a black box.
 | Idle Elastic IPs | waste | `ElasticIP:IdleAddress` usage type, 100% recoverable |
 | gp2 to gp3 migration | rightsizing | gp3 lists ~20% cheaper per GB-month |
 | Snapshot retention | waste | snapshot spend vs live-volume spend ratio |
-| Savings Plan coverage | commitment | on-demand vs committed compute, ~27% SP discount |
+| Savings Plan coverage | commitment | on-demand vs committed EC2/Fargate, ~27% SP discount |
+| RDS Reserved Instances | commitment | on-demand RDS/Aurora instance usage, ~30% RI discount |
 | NAT / cross-AZ transfer | data transfer | NAT + regional-transfer usage types |
 | Untagged spend | governance | spend with no `team` tag, can't be allocated |
 
@@ -145,7 +148,7 @@ cost-engine demo
 
 ```bash
 uv pip install -e ".[dev]"
-uv run pytest        # 39 tests
+uv run pytest        # 59 tests
 uv run ruff check src tests
 ```
 

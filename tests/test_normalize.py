@@ -39,8 +39,8 @@ def test_to_snake_handles_raw_and_normalized() -> None:
 def test_optional_columns_filled_and_service_falls_back() -> None:
     df = to_canonical(_minimal_raw_cur())
     assert list(df.columns) == list(S.SCHEMA.keys())
-    # Service name fell back to the product code.
-    assert df[S.SERVICE_NAME].to_list() == ["AmazonEC2", "AmazonEC2"]
+    # Service name fell back to the product code, mapped to a friendly name.
+    assert df[S.SERVICE_NAME].to_list() == ["Amazon EC2", "Amazon EC2"]
     # Absent optional columns are present as all-null.
     assert df[S.REGION].null_count() == df.height
     assert df[S.TAG_TEAM].null_count() == df.height

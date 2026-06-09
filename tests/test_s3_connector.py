@@ -92,8 +92,8 @@ def test_load_cur_from_s3_by_key_runs_full_analysis() -> None:
     with stub:
         df = load_cur_from_s3(BUCKET, key="k.parquet", client=client)
     assert isinstance(df, pl.DataFrame) and df.height > 0
-    # Full fidelity: all six rules fire just like a local file.
-    assert len(analyze(df).findings) == 6
+    # Full fidelity: every rule fires just like a local file.
+    assert len(analyze(df).findings) == 7
 
 
 def test_load_cur_from_s3_finds_latest_then_downloads() -> None:

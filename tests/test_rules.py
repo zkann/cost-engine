@@ -9,6 +9,7 @@ from cost_engine.analyze.rules import (
     DataTransferRule,
     Gp2ToGp3Rule,
     IdleElasticIpRule,
+    RdsReservedCoverageRule,
     SavingsPlanCoverageRule,
     SnapshotRetentionRule,
     UntaggedSpendRule,
@@ -22,6 +23,7 @@ EXPECTED = {
     IdleElasticIpRule: 227.0,   # staging idle EIP, 100% recoverable
     SnapshotRetentionRule: 1332.0,  # (2150 + 1180) * 0.40
     SavingsPlanCoverageRule: 2570.4,  # 13600 on-demand * 0.70 * 0.27
+    RdsReservedCoverageRule: 861.0,  # 4100 on-demand RDS * 0.70 * 0.30
     DataTransferRule: 1416.0,   # (1100 + 1500 + 1400 + 720) * 0.30
 }
 

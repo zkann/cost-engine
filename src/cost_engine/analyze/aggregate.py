@@ -7,12 +7,21 @@ import polars as pl
 from .. import schema as S
 from ..models import Breakdown, CostSlice
 
-# Dimension label -> column it groups on. ``team`` nulls become "untagged".
+# Dimension label -> column it groups on.
 DIMENSIONS: dict[str, str] = {
     "service": S.SERVICE_NAME,
     "account": S.ACCOUNT_ID,
     "team": S.TAG_TEAM,
     "region": S.REGION,
+}
+
+# What a null key means depends on the dimension: only an absent team tag is
+# "untagged"; an absent region/service is just unattributed.
+_NULL_LABEL: dict[str, str] = {
+    "team": "untagged",
+    "region": "no region",
+    "account": "unknown account",
+    "service": "unknown service",
 }
 
 
@@ -39,7 +48,7 @@ def build_breakdown(df: pl.DataFrame, dimension: str, top_n: int = 12) -> Breakd
     total = round(usage[S.UNBLENDED_COST].sum() or 0.0, 2)
 
     grouped = (
-        usage.with_columns(pl.col(col).fill_null("untagged"))
+        usage.with_columns(pl.col(col).fill_null(_NULL_LABEL.get(dimension, "unknown")))
         .group_by(col)
         .agg(pl.col(S.UNBLENDED_COST).sum().alias("cost"))
         .sort("cost", descending=True)
@@ -64,4 +73,16 @@ def build_breakdown(df: pl.DataFrame, dimension: str, top_n: int = 12) -> Breakd
 
 
 def build_breakdowns(df: pl.DataFrame) -> list[Breakdown]:
-    return [build_breakdown(df, dim) for dim in DIMENSIONS]
+    """Breakdowns for every dimension that has data.
+
+    A dimension whose column is entirely null (e.g. a CUR with no region or tag
+    column) would render as a single "100%" bucket, which is noise, so it's
+    dropped. The CLI's data-gap note explains what's missing.
+    """
+    usage = _usage_only(df)
+    out: list[Breakdown] = []
+    for dim, col in DIMENSIONS.items():
+        if usage[col].null_count() == usage.height:
+            continue  # no real values to break down
+        out.append(build_breakdown(df, dim))
+    return out
