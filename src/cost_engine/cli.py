@@ -200,8 +200,11 @@ def _print_rich(report: Report) -> None:
         body = report.executive_summary
         if report.next_step:
             body += f"\n\n[bold]Next step:[/bold] {report.next_step}"
-        src = {"llm": "Claude", "fallback": "template"}.get(report.summary_source)
-        title = f"Executive summary [dim]({src})[/dim]" if src else "Executive summary"
+        # Disclose AI-written prose; the deterministic summary is first-class
+        # output computed from the findings and needs no qualifier.
+        title = "Executive summary"
+        if report.summary_source == "llm":
+            title += " [dim](written by Claude)[/dim]"
         console.print(Panel(body, title=title, border_style="blue"))
 
     table = Table(title="Opportunities", header_style="bold")

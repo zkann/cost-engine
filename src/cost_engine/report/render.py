@@ -57,8 +57,8 @@ def render_markdown(report: Report) -> str:
     lines.append("")
 
     if report.executive_summary:
-        src = {"llm": "Claude", "fallback": "template"}.get(report.summary_source, "")
-        suffix = f" _(summary: {src})_" if src else ""
+        # Disclose AI-written prose; the deterministic summary needs no qualifier.
+        suffix = " _(written by Claude)_" if report.summary_source == "llm" else ""
         lines.append(report.executive_summary + suffix)
         lines.append("")
         if report.next_step:
