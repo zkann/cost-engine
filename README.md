@@ -194,4 +194,6 @@ Adding a rule is one file plus one line in `analyze/rules/__init__.py`. See
 
 ## License
 
-MIT. Built by [Zak Kann](https://zakkann.com).
+MIT. Built by [Zak Kann](https://zakkann.com). Sibling project:
+[llm-gateway](https://github.com/zkann/llm-gateway), a multi-model LLM router
+with task routing, fallback, and a cost-per-task ledger.
