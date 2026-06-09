@@ -95,7 +95,7 @@ def _load_dotenv(path: Path = Path(".env")) -> None:
     Real environment variables always win (setdefault), and this is invoked
     from the CLI callback, never from library code: a service importing
     cost_engine must not have secrets resurrected from a file on disk (the
-    OpsCenter app runs the engine in a deliberately secret-free sandbox).
+    OpsCenter FinOps app runs the engine in a deliberately secret-free sandbox).
     """
     import os
 

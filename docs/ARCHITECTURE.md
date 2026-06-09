@@ -60,7 +60,7 @@ untrusted input without inheriting a large attack surface:
 - Deterministic given inputs; no hidden global state.
 
 A consuming service still owns the trust boundary for the **inputs** it feeds in.
-The split between this public engine and the private OpsCenter app is documented
+The split between this public engine and the private OpsCenter FinOps app is documented
 below.
 
 ## The public / private boundary

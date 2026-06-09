@@ -18,7 +18,7 @@ own data and about depending on it from another service.
   you opt into the LLM summary. The **CLI** convenience-loads a `.env` from the
   current directory (real environment variables win); the **library** never
   reads `.env` or any file for credentials, so a service embedding
-  `cost_engine`, like the sandboxed OpsCenter worker, cannot have secrets
+  `cost_engine`, like the sandboxed OpsCenter FinOps worker, cannot have secrets
   resurrected from disk.
 - **No outbound calls during analysis.** The only network call in the codebase is
   the optional Claude summary. With no key set, even that is skipped. Parsing and
@@ -65,7 +65,7 @@ service. Treat it like any dependency that parses untrusted input:
    data can't drive an outbound model call from inside your service, or give it a
    scoped key in the isolated worker.
 
-The hosted OpsCenter app applies all four. See its repository's architecture
+The hosted OpsCenter FinOps app applies all four. See its repository's architecture
 notes for the worker design.
 
 ## Reporting a vulnerability
