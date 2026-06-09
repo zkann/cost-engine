@@ -36,9 +36,10 @@ jobs:
       - name: Install with all extras
         run: uv pip install -e ".[aws,llm]" pip-audit
       - name: Dependency audit
-        # --skip-editable skips the local cost-engine package (not on PyPI);
-        # third-party dependencies are still audited.
-        run: uv run pip-audit --strict --skip-editable
+        # Skip the local cost-engine package (editable, not on PyPI). Third-party
+        # deps are still audited and a real advisory fails the job. (--strict is
+        # omitted because it would treat the skipped local package as an error.)
+        run: uv run pip-audit --skip-editable
 
   secret-scan:
     # Backstop against a secret ever landing in this public repo or its history.
