@@ -132,9 +132,9 @@ def test_fallback_advice_never_names_absent_rules() -> None:
         ]
     )
     summarize(report, use_llm=False)
-    s = report.executive_summary
-    assert "gp2" not in s and "idle" not in s.lower()
-    assert "commitment" in s.lower()  # the caveat that IS relevant
+    combined = report.executive_summary + " " + report.next_step
+    assert "gp2" not in combined and "idle" not in combined.lower()
+    assert "commitment" in report.next_step.lower()  # the caveat that IS relevant
 
 
 def test_fallback_advice_names_quick_wins_when_present() -> None:
@@ -152,7 +152,7 @@ def test_fallback_advice_names_quick_wins_when_present() -> None:
         ]
     )
     summarize(report, use_llm=False)
-    assert "release idle elastic ip addresses" in report.executive_summary.lower()
+    assert "release idle elastic ip addresses" in report.next_step.lower()
 
 
 def test_severity_escalates_on_share_of_spend(synthetic_df) -> None:

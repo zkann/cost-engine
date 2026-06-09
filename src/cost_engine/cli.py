@@ -166,8 +166,10 @@ def _print_rich(report: Report) -> None:
     console.print(Panel(head, title="cost-engine", border_style="green"))
 
     if report.executive_summary:
-        console.print(Panel(report.executive_summary, title="Executive summary",
-                            border_style="blue"))
+        body = report.executive_summary
+        if report.next_step:
+            body += f"\n\n[bold]Next step:[/bold] {report.next_step}"
+        console.print(Panel(body, title="Executive summary", border_style="blue"))
 
     table = Table(title="Opportunities", header_style="bold")
     table.add_column("Pri")

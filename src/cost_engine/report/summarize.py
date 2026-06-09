@@ -25,6 +25,11 @@ def summarize(report: Report, use_llm: bool = True) -> Report:
     to the deterministic summary so a missing key or a network blip can't break
     a run.
     """
+    # The next step is deterministic on both paths: it must only ever name
+    # findings that actually fired, so it isn't delegated to the LLM.
+    paying = [f for f in report.findings if f.estimated_monthly_savings > 0]
+    report.next_step = _next_step(paying) if paying else ""
+
     if use_llm and os.environ.get("ANTHROPIC_API_KEY"):
         text = _llm_summary(report)
         if text:
@@ -67,10 +72,11 @@ def _llm_summary(report: Report) -> str | None:
     model = os.environ.get("COST_ENGINE_LLM_MODEL", DEFAULT_MODEL)
     prompt = (
         "You are a FinOps analyst briefing a startup founder/CTO. Using only the "
-        "facts below, write a 3-4 sentence executive summary of their AWS cost "
+        "facts below, write a 2-3 sentence executive summary of their AWS cost "
         "report. Lead with total spend and total recoverable dollars. Name the two "
-        "biggest opportunities. End with one concrete next step. Be direct and "
-        "specific, no filler, no markdown, no bullet points.\n\n"
+        "biggest opportunities. Do not give advice or a next step (that is shown "
+        "separately). Be direct and specific, no filler, no markdown, no bullet "
+        "points.\n\n"
         f"{_facts(report)}"
     )
     try:
@@ -136,6 +142,5 @@ def _fallback_summary(report: Report) -> str:
         f"${report.total_cost:,.0f}/month, of which about "
         f"${report.total_estimated_monthly_savings:,.0f}/month "
         f"({report.savings_pct_of_spend:.0%}, ${report.total_annual_savings:,.0f}/year) "
-        f"looks recoverable across {n} {opportunities}. {lead}"
-        f"{top_clause}. {_next_step(paying)}"
+        f"looks recoverable across {n} {opportunities}. {lead}{top_clause}."
     )

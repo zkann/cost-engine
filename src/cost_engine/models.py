@@ -87,6 +87,10 @@ class Report(BaseModel):
     findings: list[Finding] = Field(default_factory=list)
     executive_summary: str = ""
     summary_source: str = "none"  # "llm" | "fallback" | "none"
+    next_step: str = Field(
+        default="",
+        description="One concrete action, derived from the findings that fired",
+    )
     # Provenance, set by the CLI. ``source`` is where the data came from;
     # ``account_note`` records the account(s), from the data itself when present,
     # or the calling credentials' identity for sources that carry no account id.

@@ -61,6 +61,9 @@ def render_markdown(report: Report) -> str:
         suffix = f" _(summary: {src})_" if src else ""
         lines.append(report.executive_summary + suffix)
         lines.append("")
+        if report.next_step:
+            lines.append(f"**Next step:** {report.next_step}")
+            lines.append("")
 
     # Opportunities.
     lines.append("## Opportunities")
