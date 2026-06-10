@@ -192,6 +192,13 @@ uv run ruff check src tests
 Adding a rule is one file plus one line in `analyze/rules/__init__.py`. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Want this on your real bill?
+
+cost-engine flags what a CUR can show. I also do a fixed-price AWS cost audit
+that goes further: architecture, commitment strategy, and the AI and inference
+spend a heuristic can't judge. Details at
+[zakkann.com/aws-cost-audit](https://zakkann.com/aws-cost-audit).
+
 ## License
 
 MIT. Built by [Zak Kann](https://zakkann.com). Part of
